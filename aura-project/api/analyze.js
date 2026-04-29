@@ -14,16 +14,18 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Invalid request body." });
   }
 
-  try {
-    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  const inlineData = parts.find(p => p.inline_data)?.inline_data?.data;
+  if (inlineData && inlineData.length > 6_000_000) {
+    return res.status(413).json({ error: "Image is too large. Please upload a file under 4MB." });
+  }
 
-    const geminiRes = await fetch(GEMINI_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        system_instruction: {
-          parts: [{
-            text: `You are Aura, a senior UX/UI design mentor. You give direct, warm, specific feedback. No filler words.
+  const MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+  const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
+
+  const body = JSON.stringify({
+    system_instruction: {
+      parts: [{
+        text: `You are Aura, a senior UX/UI design mentor. You give direct, warm, specific feedback. No filler words.
 
 You MUST respond in EXACTLY this structure — always include all three sections, always have bullets in each:
 
@@ -40,19 +42,32 @@ You MUST respond in EXACTLY this structure — always include all three sections
 - URLs must be real article pages, not homepages
 
 Always give feedback. Never say you cannot analyze the image. Max 500 words total.`
-          }]
-        },
-        contents: [{ role: "user", parts }],
-        generationConfig: { maxOutputTokens: 1200 },
-      }),
-    });
+      }]
+    },
+    contents: [{ role: "user", parts }],
+    generationConfig: { maxOutputTokens: 1200 },
+  });
 
-    const data = await geminiRes.json();
+  try {
+    let geminiRes, data;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      geminiRes = await fetch(GEMINI_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      });
+      data = await geminiRes.json();
+      const overloaded = geminiRes.status === 503 || geminiRes.status === 429;
+      if (!overloaded) break;
+      if (attempt < 2) await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+    }
 
     if (!geminiRes.ok) {
-      return res.status(geminiRes.status).json({
-        error: data?.error?.message || `Gemini error ${geminiRes.status}`
-      });
+      const msg = data?.error?.message || `Gemini error ${geminiRes.status}`;
+      const friendly = (geminiRes.status === 503 || geminiRes.status === 429)
+        ? "Gemini is busy right now. Please try again in a moment."
+        : msg;
+      return res.status(geminiRes.status).json({ error: friendly });
     }
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
