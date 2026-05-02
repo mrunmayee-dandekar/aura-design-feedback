@@ -31,20 +31,6 @@ function parseResources(text) {
   });
 }
 
-
-function LogoMark() {
-  return (
-    <svg width="38" height="40" viewBox="0 0 38 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="19" cy="20" r="14" stroke="#111" strokeWidth="2.2"/>
-      <circle cx="19" cy="20" r="6" fill="#111"/>
-      <line x1="19" y1="2" x2="19" y2="8" stroke="#111" strokeWidth="2.2" strokeLinecap="round"/>
-      <line x1="19" y1="32" x2="19" y2="38" stroke="#111" strokeWidth="2.2" strokeLinecap="round"/>
-      <line x1="2" y1="20" x2="8" y2="20" stroke="#111" strokeWidth="2.2" strokeLinecap="round"/>
-      <line x1="30" y1="20" x2="36" y2="20" stroke="#111" strokeWidth="2.2" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
 function ExtIcon() {
   return (
     <svg width="10" height="10" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" style={{display:"inline-block",verticalAlign:"middle"}}>
@@ -187,9 +173,12 @@ export default function Aura() {
       <div className="sticky-header">
         <nav>
           <div className="n-logo" onClick={reset}>
-            <div className="n-mark"><LogoMark/></div>
-            <span className="n-word">Aura<span className="n-dot">.</span></span>
-          </div>
+  <img
+    src="/aura-logo.png"
+    alt="Aura"
+    style={{height:"38px", width:"auto", display:"block"}}
+  />
+</div>
           <span className="n-badge">Design Feedback</span>
         </nav>
       </div>
