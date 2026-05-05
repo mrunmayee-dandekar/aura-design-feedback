@@ -196,12 +196,22 @@ export default function Aura() {
       <div className="sticky-header">
         <nav>
           <div className="n-logo" onClick={reset}>
-            <img
-              src="/aura-logo.png"
-              alt="Aura"
-              style={{height:"38px", width:"auto", display:"block"}}
-            />
-          </div>
+  <img
+    src="/aura-logo.png"
+    alt="Aura"
+    style={{height:"38px", width:"auto", display:"block"}}
+  />
+  <span style={{
+    fontFamily: "'Bricolage Grotesque', sans-serif",
+    fontWeight: 700,
+    fontSize: "28px",
+    color: "var(--black)",
+    letterSpacing: "-0.5px",
+    lineHeight: 1
+  }}>
+    Aura<span style={{color: "var(--blue)"}}>.</span>
+  </span>
+</div>
           <span className="n-badge">Design Feedback</span>
         </nav>
       </div>
