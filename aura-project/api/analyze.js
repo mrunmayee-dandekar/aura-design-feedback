@@ -55,7 +55,7 @@ You MUST respond in EXACTLY this structure — always include all three sections
 Always give feedback. Never say you cannot analyze the image. Max 500 words total.`;
 
   const body = JSON.stringify({
-    model: "meta-llama/llama-4-maverick-17b-128e-instruct",
+  model: "llama-4-maverick-17b-128e-instruct",
     max_tokens: 1200,
     messages: [
       { role: "system", content: systemPrompt },
