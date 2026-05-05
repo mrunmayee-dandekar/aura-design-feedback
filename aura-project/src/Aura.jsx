@@ -270,12 +270,6 @@ export default function Aura() {
 
         {view === "questions" && (
           <div className="qpage">
-            <div className={`q-thumb${!imgUrl?" q-thumb-url":""}`}>
-              {imgUrl
-                ? <img src={imgUrl} alt="design"/>
-                : <><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#CCC" strokeWidth="1.4" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg><p className="q-url-t">{siteUrl}</p></>
-              }
-            </div>
             <h2 className="q-h">Three quick questions.</h2>
             <p className="q-s">Shapes how Aura reads your work. Ten seconds.</p>
             {QS.map((q, qi) => (
