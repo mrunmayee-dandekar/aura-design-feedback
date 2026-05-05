@@ -8,17 +8,21 @@ const QS = [
 ];
 const MSGS = ["Reading your design…","Spotting patterns…","Thinking like a mentor…","Writing your feedback…"];
 
-function bullets(text, kw) {
-  const m = text.match(new RegExp(`#{1,6}[^\\n]*${kw}[^\\n]*\\n([\\s\\S]*?)(?=\\n\\s*#{1,6}\\s|$)`, "i"));
+// More flexible heading matcher — handles Gemini's slight phrasing variations
+function bullets(text, keywords) {
+  const kwPattern = keywords.join("|");
+  const m = text.match(
+    new RegExp(`#{1,6}[^\\n]*(${kwPattern})[^\\n]*\\n([\\s\\S]*?)(?=\\n\\s*#{1,6}\\s|$)`, "i")
+  );
   if (!m) return [];
-  return m[1]
+  return m[2]
     .split("\n")
     .map(l => l.replace(/^\s*[-•*]\s+|^\s*\d+\.\s+/, "").replace(/\*\*/g, "").trim())
     .filter(l => l.length > 6);
 }
 
 function parseResources(text) {
-  const raw = bullets(text, "Resources");
+  const raw = bullets(text, ["Resources", "Level Up"]);
   return raw.map(line => {
     const urlMatch = line.match(/\|\s*URL:\s*(https?:\/\/[^\s|]+)/i);
     const url = urlMatch ? urlMatch[1].replace(/[.,)>]+$/, "") : null;
@@ -29,6 +33,15 @@ function parseResources(text) {
     }
     return { label: clean, desc: "", url };
   });
+}
+
+function isValidUrl(str) {
+  try {
+    const url = new URL(str);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 function ExtIcon() {
@@ -96,15 +109,25 @@ export default function Aura() {
   const goToQuestionsFromUrl = () => {
     const trimmed = siteUrl.trim();
     if (!trimmed) return;
-    setSiteUrl(trimmed);
+    // Prepend https:// if missing, then validate
+    const withProtocol = trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
+    if (!isValidUrl(withProtocol)) {
+      setErr("Please enter a valid URL, e.g. https://yoursite.com");
+      return;
+    }
+    setSiteUrl(withProtocol);
     setImgUrl(null);
     setImgData(null);
+    setErr(null);
     setView("questions");
   };
 
   const ok = Object.values(ans).every(Boolean);
 
   const analyze = async () => {
+    // Guard: clear any existing interval before starting a new one
+    if (tmr.current) clearInterval(tmr.current);
+
     setView("analyzing");
     setErr(null);
     setMi(0);
@@ -133,8 +156,9 @@ export default function Aura() {
       const text = data.text || "";
       if (!text) throw new Error("No response received. Please try again.");
 
-      const good = bullets(text, "Landing Well");
-      const attn = bullets(text, "Needs");
+      // Use keyword arrays for robustness
+      const good = bullets(text, ["Landing Well", "Working Well", "Strengths"]);
+      const attn = bullets(text, ["Needs", "Attention", "Improve", "Issues"]);
       const res2 = parseResources(text);
 
       if (!good.length && !attn.length) {
@@ -169,16 +193,15 @@ export default function Aura() {
         <div className="blob b-lv"/><div className="blob b-pc"/>
       </div>
 
-      {/* ── Sticky header: nav only ── */}
       <div className="sticky-header">
         <nav>
           <div className="n-logo" onClick={reset}>
-  <img
-    src="/aura-logo.png"
-    alt="Aura"
-    style={{height:"38px", width:"auto", display:"block"}}
-  />
-</div>
+            <img
+              src="/aura-logo.png"
+              alt="Aura"
+              style={{height:"38px", width:"auto", display:"block"}}
+            />
+          </div>
           <span className="n-badge">Design Feedback</span>
         </nav>
       </div>
@@ -201,7 +224,13 @@ export default function Aura() {
                 onDragLeave={()=>setDrag(false)}
                 onClick={()=>fRef.current?.click()}
               >
-                <input ref={fRef} type="file" accept="image/*" onChange={e=>handleFile(e.target.files[0])}/>
+                <input
+                  ref={fRef}
+                  type="file"
+                  accept="image/*"
+                  aria-label="Upload design image"
+                  onChange={e=>handleFile(e.target.files[0])}
+                />
                 <div className="d-icon">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#BBB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
@@ -302,6 +331,9 @@ export default function Aura() {
                   </li>
                 ))}
               </ul>
+              <p style={{fontSize:"11px",color:"#BBB",marginTop:"16px",lineHeight:1.5}}>
+                ⚠ AI-generated links — always verify before visiting.
+              </p>
             </div>
 
             <button className="btn-back" onClick={reset}>← Analyze another design</button>
