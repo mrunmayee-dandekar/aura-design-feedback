@@ -1,12 +1,11 @@
 export default async function handler(req, res) {
-  // Only allow POST
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: "Gemini API key not configured on server." });
+    return res.status(500).json({ error: "Groq API key not configured on server." });
   }
 
   const { parts } = req.body;
@@ -14,67 +13,88 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Invalid request body." });
   }
 
-  const inlineData = parts.find(p => p.inline_data)?.inline_data?.data;
-  if (inlineData && inlineData.length > 6_000_000) {
+  // Separate image data and text from parts
+  const imagePart = parts.find(p => p.inline_data);
+  const textPart  = parts.find(p => p.text)?.text || "";
+
+  if (imagePart && imagePart.inline_data.data.length > 6_000_000) {
     return res.status(413).json({ error: "Image is too large. Please upload a file under 4MB." });
   }
 
-  const MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
-  const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
+  const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-  const body = JSON.stringify({
-    system_instruction: {
-      parts: [{
-        text: `You are Aura, a senior UX/UI design mentor. You give direct, warm, specific feedback. No filler words.
+  // Build the user message content
+  // Groq's vision model accepts image_url with base64
+  const userContent = [];
 
+  if (imagePart) {
+    userContent.push({
+      type: "image_url",
+      image_url: {
+        url: `data:${imagePart.inline_data.mime_type};base64,${imagePart.inline_data.data}`,
+      },
+    });
+  }
+
+  userContent.push({
+    type: "text",
+    text: textPart,
+  });
+
+  const systemPrompt = `You are Aura, a senior UX/UI design mentor. You give direct, warm, specific feedback. No filler words.
 You MUST respond in EXACTLY this structure — always include all three sections, always have bullets in each:
-
 ## What's Landing Well
 - [2-3 bullets: specific things that are working well in this design]
-
 ## What Needs Your Attention
 - [3-4 bullets: specific issues, each starting with: IssueName: explanation of what to fix and why]
-
 ## Level Up: Resources
 - [3-4 bullets: real, specific resources directly related to the issues you identified]
 - Each bullet MUST follow this EXACT format: Title — Source: one sentence description | URL: https://full-url-here
 - Use ONLY real URLs from well-known design resources like: nngroup.com, smashingmagazine.com, web.dev, css-tricks.com, learnui.design, refactoringui.com, baymard.com, lukew.com, alistapart.com, abookapart.com, designsystems.com
 - URLs must be real article pages, not homepages
+Always give feedback. Never say you cannot analyze the image. Max 500 words total.`;
 
-Always give feedback. Never say you cannot analyze the image. Max 500 words total.`
-      }]
-    },
-    contents: [{ role: "user", parts }],
-    generationConfig: { maxOutputTokens: 1200 },
+  const body = JSON.stringify({
+    model: "meta-llama/llama-4-maverick-17b-128e-instruct",
+    max_tokens: 1200,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user",   content: userContent },
+    ],
   });
 
   try {
-    let geminiRes, data;
+    let groqRes, data;
     for (let attempt = 0; attempt < 3; attempt++) {
-      geminiRes = await fetch(GEMINI_URL, {
+      groqRes = await fetch(GROQ_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
         body,
       });
-      data = await geminiRes.json();
-      const overloaded = geminiRes.status === 503 || geminiRes.status === 429;
+      data = await groqRes.json();
+      const overloaded = groqRes.status === 503 || groqRes.status === 429;
       if (!overloaded) break;
       if (attempt < 2) await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
     }
 
-    if (!geminiRes.ok) {
-      const msg = data?.error?.message || `Gemini error ${geminiRes.status}`;
-      const friendly = (geminiRes.status === 503 || geminiRes.status === 429)
-        ? "Gemini is busy right now. Please try again in a moment."
+    if (!groqRes.ok) {
+      const msg = data?.error?.message || `Groq error ${groqRes.status}`;
+      const friendly = (groqRes.status === 503 || groqRes.status === 429)
+        ? "Groq is busy right now. Please try again in a moment."
         : msg;
-      return res.status(geminiRes.status).json({ error: friendly });
+      return res.status(groqRes.status).json({ error: friendly });
     }
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const text = data.choices?.[0]?.message?.content || "";
+    if (!text) return res.status(500).json({ error: "Empty response from Groq." });
+
     return res.status(200).json({ text });
 
   } catch (e) {
-    console.error("Gemini fetch error:", e);
-    return res.status(500).json({ error: "Failed to reach Gemini API." });
+    console.error("Groq fetch error:", e);
+    return res.status(500).json({ error: "Failed to reach Groq API." });
   }
 }
