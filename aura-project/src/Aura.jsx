@@ -24,9 +24,24 @@ function bullets(text, keywords) {
 function parseResources(text) {
   const raw = bullets(text, ["Resources", "Level Up"]);
   return raw.map(line => {
+    // Try SEARCH: format first
+    const searchMatch = line.match(/\|\s*SEARCH:\s*(.+)$/i);
+    // Also still support old URL: format as fallback
     const urlMatch = line.match(/\|\s*URL:\s*(https?:\/\/[^\s|]+)/i);
-    const url = urlMatch ? urlMatch[1].replace(/[.,)>]+$/, "") : null;
-    const clean = line.replace(/\s*\|\s*URL:\s*https?:\/\/[^\s|]+/i, "").trim();
+
+    let url = null;
+    if (searchMatch) {
+      const query = searchMatch[1].trim().replace(/[.,)>]+$/, "");
+      url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+    } else if (urlMatch) {
+      url = urlMatch[1].replace(/[.,)>]+$/, "");
+    }
+
+    const clean = line
+      .replace(/\s*\|\s*SEARCH:\s*.+$/i, "")
+      .replace(/\s*\|\s*URL:\s*https?:\/\/[^\s|]+/i, "")
+      .trim();
+
     const colonIdx = clean.indexOf(":");
     if (colonIdx !== -1) {
       return { label: clean.slice(0, colonIdx).trim(), desc: clean.slice(colonIdx + 1).trim(), url };
