@@ -48,10 +48,9 @@ You MUST respond in EXACTLY this structure — always include all three sections
 ## What Needs Your Attention
 - [3-4 bullets: specific issues, each starting with: IssueName: explanation of what to fix and why]
 ## Level Up: Resources
-- [3-4 bullets: real, specific resources directly related to the issues you identified]
-- Each bullet MUST follow this EXACT format: Title — Source: one sentence description | URL: https://full-url-here
-- Use ONLY real URLs from well-known design resources like: nngroup.com, smashingmagazine.com, web.dev, css-tricks.com, learnui.design, refactoringui.com, baymard.com, lukew.com, alistapart.com, abookapart.com, designsystems.com
-- URLs must be real article pages, not homepages
+- [3-4 bullets: resources directly related to the issues you identified]
+- Each bullet MUST follow this EXACT format: Title — Source: one sentence description | SEARCH: your search query here
+- For SEARCH, write the exact search terms someone would type into Google to find this resource (e.g. "Nielsen Norman Group visual hierarchy guide" or "Smashing Magazine mobile typography best practices")
 Always give feedback. Never say you cannot analyze the image. Max 500 words total.`;
 
   const body = JSON.stringify({
