@@ -56,7 +56,7 @@ Always give feedback. Never say you cannot analyze the image. Max 500 words tota
 
   const body = JSON.stringify({
   model: "meta-llama/llama-4-scout-17b-16e-instruct",
-    max_tokens: 1200,
+    max_tokens: 800,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user",   content: userContent },
