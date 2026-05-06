@@ -63,6 +63,7 @@ export default function Aura() {
   const [drag, setDrag]         = useState(false);
   const [mi, setMi]             = useState(0);
   const [err, setErr]           = useState(null);
+const [uploaded, setUploaded] = useState(false);
 
   const fRef = useRef(null);
   const tmr  = useRef(null);
@@ -76,7 +77,7 @@ export default function Aura() {
       return;
     }
     const r = new FileReader();
-    r.onload = (e) => {
+  r.onload = (e) => {
       const url = e.target.result;
       const [h, d] = url.split(",");
       const mimeMatch = h?.match(/:(.*?);/);
@@ -88,8 +89,12 @@ export default function Aura() {
       setSiteUrl("");
       setImgUrl(url);
       setImgData({ base64: d, mediaType: mimeMatch[1] });
-      setView("questions");
+      setUploaded(true);
       if (fRef.current) fRef.current.value = "";
+      setTimeout(() => {
+        setUploaded(false);
+        setView("questions");
+      }, 1000);
     };
     r.onerror = () => setErr("Couldn't read that file. Try a different image.");
     r.readAsDataURL(file);
@@ -227,28 +232,43 @@ export default function Aura() {
               <button className={`pill-btn${tab==="url"?" on":""}`} onClick={()=>switchTab("url")}>Paste a URL</button>
             </div>
             {tab === "image" && (
-              <div
-                className={`icard${drag?" drag":""}`}
-                onDrop={e=>{e.preventDefault();setDrag(false);handleFile(e.dataTransfer.files[0]);}}
-                onDragOver={e=>{e.preventDefault();setDrag(true);}}
-                onDragLeave={()=>setDrag(false)}
-                onClick={()=>fRef.current?.click()}
-              >
-                <input
-                  ref={fRef}
-                  type="file"
-                  accept="image/*"
-                  aria-label="Upload design image"
-                  onChange={e=>handleFile(e.target.files[0])}
-                />
-                <div className="d-icon">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#BBB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
-                  </svg>
-                </div>
-                <p className="d-title">Drop your design here</p>
-                <p className="d-sub">or click to browse your files</p>
-                <div className="d-fmts">{["PNG","JPG","WEBP","GIF","Screenshot"].map(f=><span className="d-fmt" key={f}>{f}</span>)}</div>
+            <div
+  className={`icard${drag?" drag":""}`}
+  onDrop={e=>{e.preventDefault();setDrag(false);handleFile(e.dataTransfer.files[0]);}}
+  onDragOver={e=>{e.preventDefault();setDrag(true);}}
+  onDragLeave={()=>setDrag(false)}
+  onClick={e=>{e.stopPropagation();fRef.current?.click();}}
+>
+  <input
+    ref={fRef}
+    type="file"
+    accept="image/*"
+    aria-label="Upload design image"
+    style={{display:"none"}}
+    onChange={e=>handleFile(e.target.files[0])}
+  />
+                {uploaded ? (
+                  <>
+                    <div className="d-icon" style={{background:"rgba(111,201,138,0.15)"}}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6FC98A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    </div>
+                    <p className="d-title" style={{color:"#6FC98A"}}>Image uploaded!</p>
+                    <p className="d-sub">Taking you to the next step…</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="d-icon">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#BBB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                      </svg>
+                    </div>
+                    <p className="d-title">Drop your design here</p>
+                    <p className="d-sub">or click to browse your files</p>
+                    <div className="d-fmts">{["PNG","JPG","WEBP","GIF","Screenshot"].map(f=><span className="d-fmt" key={f}>{f}</span>)}</div>
+                  </>
+                )}
               </div>
             )}
             {tab === "url" && (
