@@ -311,7 +311,9 @@ const [uploaded, setUploaded] = useState(false);
 
         {view === "analyzing" && (
           <div className="apage">
-            <div className="spin"/>
+            <div className="spin">
+              <span/><span/><span/>
+            </div>
             <p className="a-msg" key={mi}>{MSGS[mi]}</p>
           </div>
         )}
