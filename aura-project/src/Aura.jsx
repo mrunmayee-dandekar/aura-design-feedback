@@ -31,18 +31,7 @@ function parseResources(resources) {
   }));
 }
 
-    const clean = line
-      .replace(/\s*\|\s*SEARCH:\s*.+$/i, "")
-      .replace(/\s*\|\s*URL:\s*https?:\/\/[^\s|]+/i, "")
-      .trim();
-
-    const colonIdx = clean.indexOf(":");
-    if (colonIdx !== -1) {
-      return { label: clean.slice(0, colonIdx).trim(), desc: clean.slice(colonIdx + 1).trim(), url };
-    }
-    return { label: clean, desc: "", url };
-  });
-}
+    
 
 function isValidUrl(str) {
   try {
