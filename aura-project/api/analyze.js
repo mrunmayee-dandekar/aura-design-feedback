@@ -16,22 +16,15 @@ async function fetchYouTubeVideo(topic, apiKey) {
 }
 
 async function fetchArticle(topic) {
-  // Uses DuckDuckGo's free instant answer API - no key needed
-  const query = encodeURIComponent(`${topic} UX design best practices`);
-  const url = `https://api.duckduckgo.com/?q=${query}+site:nngroup.com+OR+site:smashingmagazine.com+OR+site:uxdesign.cc&format=json&no_redirect=1&no_html=1`;
   try {
-    const res = await fetch(url);
-    const data = await res.json();
-    // Try to get a real result from DuckDuckGo's related topics
-    const result = data.RelatedTopics?.find(t => t.FirstURL && t.Text);
-    if (result) {
-      return {
-        title: result.Text?.slice(0, 80) || topic,
-        url: result.FirstURL,
-        type: "article"
-      };
-    }
-    return null;
+    const query = encodeURIComponent(`${topic} UX design`);
+    // Use a reliable search URL that always works
+    const searchUrl = `https://www.google.com/search?q=${query}+site:nngroup.com+OR+site:smashingmagazine.com+OR+site:uxdesign.cc`;
+    return {
+      title: `${topic} — design article`,
+      url: searchUrl,
+      type: "article"
+    };
   } catch { return null; }
 }
 
@@ -170,6 +163,6 @@ Topics must be 2-4 words, specific to actual design issues found. Provide exactl
 
   } catch (e) {
     console.error("Groq fetch error:", e);
-    return res.status(500).json({ error: "Failed to reach Groq API." });
+    return res.status(500).json({ error: e?.message || "Failed to reach Groq API." });
   }
 }
