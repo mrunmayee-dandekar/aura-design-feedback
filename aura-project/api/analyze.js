@@ -1,9 +1,48 @@
+async function fetchYouTubeVideo(topic, apiKey) {
+  const query = encodeURIComponent(`${topic} UX UI design tutorial`);
+  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&type=video&maxResults=1&key=${apiKey}`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    const item = data.items?.[0];
+    if (!item) return null;
+    return {
+      title: item.snippet.title,
+      url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+      channel: item.snippet.channelTitle,
+      type: "video"
+    };
+  } catch { return null; }
+}
+
+async function fetchArticle(topic) {
+  // Uses DuckDuckGo's free instant answer API - no key needed
+  const query = encodeURIComponent(`${topic} UX design best practices`);
+  const url = `https://api.duckduckgo.com/?q=${query}+site:nngroup.com+OR+site:smashingmagazine.com+OR+site:uxdesign.cc&format=json&no_redirect=1&no_html=1`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    // Try to get a real result from DuckDuckGo's related topics
+    const result = data.RelatedTopics?.find(t => t.FirstURL && t.Text);
+    if (result) {
+      return {
+        title: result.Text?.slice(0, 80) || topic,
+        url: result.FirstURL,
+        type: "article"
+      };
+    }
+    return null;
+  } catch { return null; }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   const apiKey = process.env.GROQ_API_KEY;
+  const ytApiKey = process.env.YOUTUBE_API_KEY;
+
   if (!apiKey) {
     return res.status(500).json({ error: "Groq API key not configured on server." });
   }
@@ -13,7 +52,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Invalid request body." });
   }
 
-  // Separate image data and text from parts
   const imagePart = parts.find(p => p.inline_data);
   const textPart  = parts.find(p => p.text)?.text || "";
 
@@ -23,38 +61,35 @@ export default async function handler(req, res) {
 
   const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-  // Build the user message content
-  // Groq's vision model accepts image_url with base64
   const userContent = [];
-
   if (imagePart) {
     userContent.push({
       type: "image_url",
-      image_url: {
-        url: `data:${imagePart.inline_data.mime_type};base64,${imagePart.inline_data.data}`,
-      },
+      image_url: { url: `data:${imagePart.inline_data.mime_type};base64,${imagePart.inline_data.data}` },
     });
   }
-
-  userContent.push({
-    type: "text",
-    text: textPart,
-  });
+  userContent.push({ type: "text", text: textPart });
 
   const systemPrompt = `You are Aura, a senior UX/UI design mentor. You give direct, warm, specific feedback. No filler words.
 You MUST respond in EXACTLY this structure — always include all three sections, always have bullets in each:
+
 ## What's Landing Well
 - [2-3 bullets: specific things that are working well in this design]
+
 ## What Needs Your Attention
 - [3-4 bullets: specific issues, each starting with: IssueName: explanation of what to fix and why]
-## Level Up: Resources
-- [3-4 bullets: resources directly related to the issues you identified]
-- Each bullet MUST follow this EXACT format: Title — Source: one sentence description | SEARCH: your search query here
-- For SEARCH, write the exact search terms someone would type into Google to find this resource (e.g. "Nielsen Norman Group visual hierarchy guide" or "Smashing Magazine mobile typography best practices")
-Always give feedback. Never say you cannot analyze the image. Max 500 words total.`;
+
+## Level Up: Topics
+- [Provide exactly 3 short topic keywords related to the issues you found, one per line, in this format:]
+- TOPIC: typography hierarchy
+- TOPIC: colour contrast accessibility
+- TOPIC: visual spacing layout
+
+Topics must be 2-4 words, specific to actual design issues found. No URLs, no descriptions, just the topic keyword after TOPIC:
+Always give feedback. Never say you cannot analyze the image. Max 400 words total.`;
 
   const body = JSON.stringify({
-  model: "meta-llama/llama-4-scout-17b-16e-instruct",
+    model: "meta-llama/llama-4-scout-17b-16e-instruct",
     max_tokens: 800,
     messages: [
       { role: "system", content: systemPrompt },
@@ -90,7 +125,43 @@ Always give feedback. Never say you cannot analyze the image. Max 500 words tota
     const text = data.choices?.[0]?.message?.content || "";
     if (!text) return res.status(500).json({ error: "Empty response from Groq." });
 
-    return res.status(200).json({ text });
+    // Extract TOPIC keywords from the response
+    const topicMatches = [...text.matchAll(/TOPIC:\s*(.+)/gi)];
+    const topics = topicMatches.map(m => m[1].trim()).slice(0, 3);
+
+    // Fetch real resources for each topic in parallel
+    let resources = [];
+    if (topics.length > 0) {
+      const resourcePromises = topics.map(async (topic) => {
+        const [video, article] = await Promise.all([
+          ytApiKey ? fetchYouTubeVideo(topic, ytApiKey) : null,
+          fetchArticle(topic)
+        ]);
+        return { topic, video, article };
+      });
+
+      const results = await Promise.all(resourcePromises);
+
+      // Build resource list: alternate video and article
+      results.forEach(({ topic, video, article }) => {
+        if (video) resources.push(video);
+        if (article) resources.push(article);
+      });
+
+      // If no YouTube key, fall back to YouTube search URLs (always work, free)
+      if (!ytApiKey) {
+        results.forEach(({ topic }) => {
+          const query = encodeURIComponent(`${topic} UX UI design`);
+          resources.push({
+            title: `${topic} — YouTube`,
+            url: `https://www.youtube.com/results?search_query=${query}`,
+            type: "video"
+          });
+        });
+      }
+    }
+
+    return res.status(200).json({ text, resources });
 
   } catch (e) {
     console.error("Groq fetch error:", e);
