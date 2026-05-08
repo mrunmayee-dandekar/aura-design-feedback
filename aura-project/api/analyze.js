@@ -84,9 +84,10 @@ You MUST respond in EXACTLY this structure — always include all three sections
 - TOPIC: typography hierarchy
 - TOPIC: colour contrast accessibility
 - TOPIC: visual spacing layout
+- TOPIC: mobile navigation patterns
+- TOPIC: visual feedback interactions
 
-Topics must be 2-4 words, specific to actual design issues found. No URLs, no descriptions, just the topic keyword after TOPIC:
-Always give feedback. Never say you cannot analyze the image. Max 400 words total.`;
+Topics must be 2-4 words, specific to actual design issues found. Provide exactly 5 topics. No URLs, no descriptions, just the topic keyword after TOPIC:
 
   const body = JSON.stringify({
     model: "meta-llama/llama-4-scout-17b-16e-instruct",
@@ -127,7 +128,7 @@ Always give feedback. Never say you cannot analyze the image. Max 400 words tota
 
     // Extract TOPIC keywords from the response
     const topicMatches = [...text.matchAll(/TOPIC:\s*(.+)/gi)];
-    const topics = topicMatches.map(m => m[1].trim()).slice(0, 3);
+    const topics = topicMatches.map(m => m[1].trim()).slice(0, 5);
 
     // Fetch real resources for each topic in parallel
     let resources = [];
@@ -142,23 +143,27 @@ Always give feedback. Never say you cannot analyze the image. Max 400 words tota
 
       const results = await Promise.all(resourcePromises);
 
-      // Build resource list: alternate video and article
-      results.forEach(({ topic, video, article }) => {
-        if (video) resources.push(video);
-        if (article) resources.push(article);
-      });
+      // Build resource list: 3 videos first, then 2 articles
+    const videos = results.map(r => r.video).filter(Boolean);
+    const articles = results.map(r => r.article).filter(Boolean);
 
-      // If no YouTube key, fall back to YouTube search URLs (always work, free)
-      if (!ytApiKey) {
-        results.forEach(({ topic }) => {
-          const query = encodeURIComponent(`${topic} UX UI design`);
-          resources.push({
-            title: `${topic} — YouTube`,
-            url: `https://www.youtube.com/results?search_query=${query}`,
-            type: "video"
-          });
+    // Take up to 3 videos and 2 articles
+    resources = [
+      ...videos.slice(0, 3),
+      ...articles.slice(0, 2)
+    ];
+
+    // If no YouTube key, fall back to YouTube search URLs
+    if (!ytApiKey) {
+      results.slice(0, 3).forEach(({ topic }) => {
+        const query = encodeURIComponent(`${topic} UX UI design`);
+        resources.push({
+          title: `${topic} — YouTube search`,
+          url: `https://www.youtube.com/results?search_query=${query}`,
+          type: "video"
         });
-      }
+      });
+    }
     }
 
     return res.status(200).json({ text, resources });
