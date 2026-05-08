@@ -21,21 +21,15 @@ function bullets(text, keywords) {
     .filter(l => l.length > 6);
 }
 
-function parseResources(text) {
-  const raw = bullets(text, ["Resources", "Level Up"]);
-  return raw.map(line => {
-    // Try SEARCH: format first
-    const searchMatch = line.match(/\|\s*SEARCH:\s*(.+)$/i);
-    // Also still support old URL: format as fallback
-    const urlMatch = line.match(/\|\s*URL:\s*(https?:\/\/[^\s|]+)/i);
-
-    let url = null;
-    if (searchMatch) {
-      const query = searchMatch[1].trim().replace(/[.,)>]+$/, "");
-      url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-    } else if (urlMatch) {
-      url = urlMatch[1].replace(/[.,)>]+$/, "");
-    }
+function parseResources(resources) {
+  if (!resources || !Array.isArray(resources)) return [];
+  return resources.map(r => ({
+    label: r.title || "",
+    desc: r.channel || r.type || "",
+    url: r.url || null,
+    type: r.type || "article"
+  }));
+}
 
     const clean = line
       .replace(/\s*\|\s*SEARCH:\s*.+$/i, "")
@@ -176,10 +170,9 @@ const [uploaded, setUploaded] = useState(false);
       const text = data.text || "";
       if (!text) throw new Error("No response received. Please try again.");
 
-      // Use keyword arrays for robustness
       const good = bullets(text, ["Landing Well", "Working Well", "Strengths"]);
       const attn = bullets(text, ["Needs", "Attention", "Improve", "Issues"]);
-      const res2 = parseResources(text);
+      const res2 = parseResources(data.resources);
 
       if (!good.length && !attn.length) {
         throw new Error("Couldn't parse the AI response. Please try again.");
@@ -363,6 +356,18 @@ const [uploaded, setUploaded] = useState(false);
                   <li className="bitem" key={i}>
                     <span className="bdot db"/>
                     <span>
+                      <span style={{
+                        fontSize:"10px",
+                        fontWeight:600,
+                        padding:"2px 7px",
+                        borderRadius:"100px",
+                        marginRight:"8px",
+                        background: r.type==="video" ? "rgba(255,80,80,0.1)" : "rgba(84,182,252,0.1)",
+                        color: r.type==="video" ? "#e03030" : "#2a7fc9",
+                        letterSpacing:"0.04em"
+                      }}>
+                        {r.type === "video" ? "▶ VIDEO" : "✦ ARTICLE"}
+                      </span>
                       {r.url
                         ? <a className="res-link" href={r.url} target="_blank" rel="noopener noreferrer">{r.label} <ExtIcon/></a>
                         : <strong>{r.label}</strong>
@@ -372,9 +377,6 @@ const [uploaded, setUploaded] = useState(false);
                   </li>
                 ))}
               </ul>
-              <p style={{fontSize:"11px",color:"#BBB",marginTop:"16px",lineHeight:1.5}}>
-                ⚠ AI-generated links — always verify before visiting.
-              </p>
             </div>
 
             <button className="btn-back" onClick={reset}>← Analyze another design</button>
