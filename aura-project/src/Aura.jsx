@@ -8,7 +8,6 @@ const QS = [
 ];
 const MSGS = ["Reading your design…","Spotting patterns…","Thinking like a mentor…","Writing your feedback…"];
 
-// More flexible heading matcher — handles Gemini's slight phrasing variations
 function bullets(text, keywords) {
   const kwPattern = keywords.join("|");
   const m = text.match(
@@ -30,8 +29,6 @@ function parseResources(resources) {
     type: r.type || "article"
   }));
 }
-
-    
 
 function isValidUrl(str) {
   try {
@@ -61,34 +58,14 @@ export default function Aura() {
   const [drag, setDrag]         = useState(false);
   const [mi, setMi]             = useState(0);
   const [err, setErr]           = useState(null);
-const [uploaded, setUploaded] = useState(false);
+  const [uploaded, setUploaded] = useState(false);
 
-const fRef = useRef(null);
+  const fRef = useRef(null);
   const tmr  = useRef(null);
 
   useEffect(() => () => { if (tmr.current) clearInterval(tmr.current); }, []);
 
-  // Clipboard paste support — works on landing page only
-  useEffect(() => {
-    if (view !== "landing") return;
-    const handlePaste = (e) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      for (const item of items) {
-        if (item.type.startsWith("image/")) {
-          const file = item.getAsFile();
-          if (file) {
-            setTab("image");
-            handleFile(file);
-          }
-          break;
-        }
-      }
-    };
-    window.addEventListener("paste", handlePaste);
-    return () => window.removeEventListener("paste", handlePaste);
-  }, [view, handleFile]);
-
+  // handleFile MUST be defined before the clipboard useEffect
   const handleFile = useCallback((file) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
@@ -96,7 +73,7 @@ const fRef = useRef(null);
       return;
     }
     const r = new FileReader();
-  r.onload = (e) => {
+    r.onload = (e) => {
       const url = e.target.result;
       const [h, d] = url.split(",");
       const mimeMatch = h?.match(/:(.*?);/);
@@ -119,6 +96,27 @@ const fRef = useRef(null);
     r.readAsDataURL(file);
   }, []);
 
+  // Clipboard paste — now safe because handleFile is already defined above
+  useEffect(() => {
+    if (view !== "landing") return;
+    const handlePaste = (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            setTab("image");
+            handleFile(file);
+          }
+          break;
+        }
+      }
+    };
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [view, handleFile]);
+
   const switchTab = (next) => {
     setTab(next);
     setErr(null);
@@ -133,7 +131,6 @@ const fRef = useRef(null);
   const goToQuestionsFromUrl = () => {
     const trimmed = siteUrl.trim();
     if (!trimmed) return;
-    // Prepend https:// if missing, then validate
     const withProtocol = trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
     if (!isValidUrl(withProtocol)) {
       setErr("Please enter a valid URL, e.g. https://yoursite.com");
@@ -149,9 +146,7 @@ const fRef = useRef(null);
   const ok = Object.values(ans).every(Boolean);
 
   const analyze = async () => {
-    // Guard: clear any existing interval before starting a new one
     if (tmr.current) clearInterval(tmr.current);
-
     setView("analyzing");
     setErr(null);
     setMi(0);
@@ -219,22 +214,18 @@ const fRef = useRef(null);
       <div className="sticky-header">
         <nav>
           <div className="n-logo" onClick={reset}>
-  <img
-    src="/aura-logo.png"
-    alt="Aura"
-    style={{height:"38px", width:"auto", display:"block"}}
-  />
-  <span style={{
-    fontFamily: "'Bricolage Grotesque', sans-serif",
-    fontWeight: 700,
-    fontSize: "28px",
-    color: "var(--black)",
-    letterSpacing: "-0.5px",
-    lineHeight: 1
-  }}>
-    Aura<span style={{color: "var(--blue)"}}>.</span>
-  </span>
-</div>
+            <img src="/aura-logo.png" alt="Aura" style={{height:"38px", width:"auto", display:"block"}}/>
+            <span style={{
+              fontFamily: "'Bricolage Grotesque', sans-serif",
+              fontWeight: 700,
+              fontSize: "28px",
+              color: "var(--black)",
+              letterSpacing: "-0.5px",
+              lineHeight: 1
+            }}>
+              Aura<span style={{color: "var(--blue)"}}>.</span>
+            </span>
+          </div>
           <span className="n-badge">Design Feedback</span>
         </nav>
       </div>
@@ -250,21 +241,21 @@ const fRef = useRef(null);
               <button className={`pill-btn${tab==="url"?" on":""}`} onClick={()=>switchTab("url")}>Paste a URL</button>
             </div>
             {tab === "image" && (
-            <div
-  className={`icard${drag?" drag":""}`}
-  onDrop={e=>{e.preventDefault();setDrag(false);handleFile(e.dataTransfer.files[0]);}}
-  onDragOver={e=>{e.preventDefault();setDrag(true);}}
-  onDragLeave={()=>setDrag(false)}
-  onClick={e=>{e.stopPropagation();fRef.current?.click();}}
->
-  <input
-    ref={fRef}
-    type="file"
-    accept="image/*"
-    aria-label="Upload design image"
-    style={{display:"none"}}
-    onChange={e=>handleFile(e.target.files[0])}
-  />
+              <div
+                className={`icard${drag?" drag":""}`}
+                onDrop={e=>{e.preventDefault();setDrag(false);handleFile(e.dataTransfer.files[0]);}}
+                onDragOver={e=>{e.preventDefault();setDrag(true);}}
+                onDragLeave={()=>setDrag(false)}
+                onClick={e=>{e.stopPropagation();fRef.current?.click();}}
+              >
+                <input
+                  ref={fRef}
+                  type="file"
+                  accept="image/*"
+                  aria-label="Upload design image"
+                  style={{display:"none"}}
+                  onChange={e=>handleFile(e.target.files[0])}
+                />
                 {uploaded ? (
                   <>
                     <div className="d-icon" style={{background:"rgba(111,201,138,0.15)"}}>
