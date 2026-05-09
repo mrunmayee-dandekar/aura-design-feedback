@@ -18,7 +18,6 @@ async function fetchYouTubeVideo(topic, apiKey) {
 async function fetchArticle(topic) {
   try {
     const query = encodeURIComponent(`${topic} UX design`);
-    // Use a reliable search URL that always works
     const searchUrl = `https://www.google.com/search?q=${query}+site:nngroup.com+OR+site:smashingmagazine.com+OR+site:uxdesign.cc`;
     return {
       title: `${topic} — design article`,
@@ -73,7 +72,7 @@ You MUST respond in EXACTLY this structure — always include all three sections
 - [3-4 bullets: specific issues, each starting with: IssueName: explanation of what to fix and why]
 
 ## Level Up: Topics
-- [Provide exactly 3 short topic keywords related to the issues you found, one per line, in this format:]
+- [Provide exactly 5 short topic keywords related to the issues you found, one per line, in this format:]
 - TOPIC: typography hierarchy
 - TOPIC: colour contrast accessibility
 - TOPIC: visual spacing layout
@@ -81,6 +80,7 @@ You MUST respond in EXACTLY this structure — always include all three sections
 - TOPIC: visual feedback interactions
 
 Topics must be 2-4 words, specific to actual design issues found. Provide exactly 5 topics. No URLs, no descriptions, just the topic keyword after TOPIC:
+Always give feedback. Never say you cannot analyze the image. Max 400 words total.`;
 
   const body = JSON.stringify({
     model: "meta-llama/llama-4-scout-17b-16e-instruct",
@@ -119,11 +119,9 @@ Topics must be 2-4 words, specific to actual design issues found. Provide exactl
     const text = data.choices?.[0]?.message?.content || "";
     if (!text) return res.status(500).json({ error: "Empty response from Groq." });
 
-    // Extract TOPIC keywords from the response
     const topicMatches = [...text.matchAll(/TOPIC:\s*(.+)/gi)];
     const topics = topicMatches.map(m => m[1].trim()).slice(0, 5);
 
-    // Fetch real resources for each topic in parallel
     let resources = [];
     if (topics.length > 0) {
       const resourcePromises = topics.map(async (topic) => {
@@ -136,27 +134,24 @@ Topics must be 2-4 words, specific to actual design issues found. Provide exactl
 
       const results = await Promise.all(resourcePromises);
 
-      // Build resource list: 3 videos first, then 2 articles
-    const videos = results.map(r => r.video).filter(Boolean);
-    const articles = results.map(r => r.article).filter(Boolean);
+      const videos   = results.map(r => r.video).filter(Boolean);
+      const articles = results.map(r => r.article).filter(Boolean);
 
-    // Take up to 3 videos and 2 articles
-    resources = [
-      ...videos.slice(0, 3),
-      ...articles.slice(0, 2)
-    ];
+      resources = [
+        ...videos.slice(0, 3),
+        ...articles.slice(0, 2)
+      ];
 
-    // If no YouTube key, fall back to YouTube search URLs
-    if (!ytApiKey) {
-      results.slice(0, 3).forEach(({ topic }) => {
-        const query = encodeURIComponent(`${topic} UX UI design`);
-        resources.push({
-          title: `${topic} — YouTube search`,
-          url: `https://www.youtube.com/results?search_query=${query}`,
-          type: "video"
+      if (!ytApiKey) {
+        results.slice(0, 3).forEach(({ topic }) => {
+          const query = encodeURIComponent(`${topic} UX UI design`);
+          resources.push({
+            title: `${topic} — YouTube search`,
+            url: `https://www.youtube.com/results?search_query=${query}`,
+            type: "video"
+          });
         });
-      });
-    }
+      }
     }
 
     return res.status(200).json({ text, resources });
