@@ -63,10 +63,31 @@ export default function Aura() {
   const [err, setErr]           = useState(null);
 const [uploaded, setUploaded] = useState(false);
 
-  const fRef = useRef(null);
+const fRef = useRef(null);
   const tmr  = useRef(null);
 
   useEffect(() => () => { if (tmr.current) clearInterval(tmr.current); }, []);
+
+  // Clipboard paste support — works on landing page only
+  useEffect(() => {
+    if (view !== "landing") return;
+    const handlePaste = (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            setTab("image");
+            handleFile(file);
+          }
+          break;
+        }
+      }
+    };
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [view, handleFile]);
 
   const handleFile = useCallback((file) => {
     if (!file) return;
@@ -262,7 +283,15 @@ const [uploaded, setUploaded] = useState(false);
                       </svg>
                     </div>
                     <p className="d-title">Drop your design here</p>
-                    <p className="d-sub">or click to browse your files</p>
+                    <p className="d-sub">or click to browse · or <kbd style={{
+                      fontFamily:"inherit",
+                      fontSize:"12px",
+                      background:"rgba(0,0,0,0.06)",
+                      border:"1px solid #DDD",
+                      borderRadius:"5px",
+                      padding:"1px 6px",
+                      letterSpacing:"0"
+                    }}>⌘V</kbd> to paste a screenshot</p>
                     <div className="d-fmts">{["PNG","JPG","WEBP","GIF","Screenshot"].map(f=><span className="d-fmt" key={f}>{f}</span>)}</div>
                   </>
                 )}
