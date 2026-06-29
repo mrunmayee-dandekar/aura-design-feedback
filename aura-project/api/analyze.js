@@ -39,7 +39,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Groq API key not configured on server." });
   }
 
-  const { parts } = req.body;
+const { parts, previousFeedback } = req.body;
   if (!parts || !Array.isArray(parts)) {
     return res.status(400).json({ error: "Invalid request body." });
   }
@@ -62,9 +62,23 @@ export default async function handler(req, res) {
   }
   userContent.push({ type: "text", text: textPart });
 
-  const systemPrompt = `You are Aura, a senior UX/UI design mentor. You give direct, warm, specific feedback. No filler words.
-You MUST respond in EXACTLY this structure — always include all three sections, always have bullets in each:
+const compareBlock = previousFeedback ? `
 
+IMPORTANT — THIS IS A RE-UPLOAD: The user previously got feedback on an earlier version of this same design. Their previous "What Needs Your Attention" issues were:
+${previousFeedback}
+
+You MUST add a 4th section called "## Since Your Last Upload" BEFORE the other three sections, with 2-4 bullets that:
+- Explicitly call out which of the previous issues appear FIXED in this new version (start bullet with "Fixed:")
+- Explicitly call out which previous issues are STILL PRESENT (start bullet with "Still open:")
+- Optionally note one NEW issue introduced by the changes, if any (start bullet with "New:")
+Be specific and honest — if nothing improved, say so plainly but kindly. If you cannot visually confirm a fix, say "Still open" rather than guessing it's fixed.` : "";
+
+  const systemPrompt = `You are Aura, a senior UX/UI design mentor. You give direct, warm, specific feedback. No filler words.
+You MUST respond in EXACTLY this structure — always have bullets in each section:
+${previousFeedback ? `
+## Since Your Last Upload
+- [2-4 bullets per the comparison instructions below]
+` : ""}
 ## What's Landing Well
 - [2-3 bullets: specific things that are working well in this design]
 
@@ -80,8 +94,7 @@ You MUST respond in EXACTLY this structure — always include all three sections
 - TOPIC: visual feedback interactions
 
 Topics must be 2-4 words, specific to actual design issues found. Provide exactly 5 topics. No URLs, no descriptions, just the topic keyword after TOPIC:
-Always give feedback. Never say you cannot analyze the image. Max 400 words total.`;
-
+Always give feedback. Never say you cannot analyze the image. Max 450 words total.${compareBlock}`;
   const body = JSON.stringify({
     model: "meta-llama/llama-4-scout-17b-16e-instruct",
     max_tokens: 800,
