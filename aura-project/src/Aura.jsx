@@ -55,6 +55,9 @@ export default function Aura() {
   const [siteUrl, setSiteUrl]   = useState("");
   const [ans, setAns]           = useState({stage:null,type:null,focus:null});
   const [fb, setFb]             = useState(null);
+  const [prevAttn, setPrevAttn] = useState(null);   // previous "Needs Attention" bullets, kept in-session only
+  const [isUpdate, setIsUpdate] = useState(false);   // whether user said "yes this is a re-upload"
+  const [askUpdate, setAskUpdate] = useState(false);  // whether to show the re-upload prompt
   const [drag, setDrag]         = useState(false);
   const [mi, setMi]             = useState(0);
   const [err, setErr]           = useState(null);
