@@ -779,3 +779,77 @@ main {
 
 @keyframes fi { from { opacity: 0; } to { opacity: 1; } }
 @keyframes up { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── Update comparison ───────────────────────────────── */
+.update-ask {
+  width: 100%;
+  max-width: 529px;
+  margin-top: 20px;
+  padding: 18px 24px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--scard);
+  text-align: center;
+  animation: up .4s ease;
+}
+
+.update-ask p {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray);
+  margin-bottom: 14px;
+  letter-spacing: -0.2px;
+}
+
+.update-ask-btns {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.ua-yes, .ua-no {
+  padding: 9px 22px;
+  border-radius: 100px;
+  font-family: var(--f);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .18s;
+  letter-spacing: -0.2px;
+}
+
+.ua-yes {
+  background: var(--black);
+  color: var(--white);
+  border: none;
+}
+
+.ua-yes:hover {
+  background: #333;
+}
+
+.ua-no {
+  background: transparent;
+  color: #999;
+  border: 1px solid var(--border);
+}
+
+.ua-no:hover {
+  color: var(--black);
+  border-color: #AAA;
+}
+
+.a-compare-tag {
+  font-size: 13px;
+  font-weight: 500;
+  color: #AAA;
+  letter-spacing: -0.2px;
+}
+
+.bc { background: linear-gradient(180deg, #84b6fc, #5A8FE0); }
+
+.fcard-compare {
+  border-color: rgba(132, 182, 252, 0.3);
+  background: linear-gradient(180deg, rgba(132,182,252,0.04), var(--white) 40%);
+}
