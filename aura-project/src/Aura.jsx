@@ -20,6 +20,10 @@ function bullets(text, keywords) {
     .filter(l => l.length > 6);
 }
 
+function parseCompare(text) {
+  return bullets(text, ["Since Your Last Upload", "Last Upload"]);
+}
+
 function parseResources(resources) {
   if (!resources || !Array.isArray(resources)) return [];
   return resources.map(r => ({
@@ -164,10 +168,13 @@ export default function Aura() {
         parts.push({ text: `Analyze the UX/UI design of this product/website: ${siteUrl}\nDesign type: ${ans.type} | Design stage: ${ans.stage} | Focus area: ${ans.focus}\n\nProvide specific, actionable feedback based on this type of product. Give ALL three sections.` });
       }
 
-      const res = await fetch("/api/analyze", {
+const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ parts }),
+        body: JSON.stringify({
+          parts,
+          previousFeedback: isUpdate && prevAttn?.length ? prevAttn.join("\n") : null,
+        }),
       });
 
       clearInterval(tmr.current);
@@ -180,13 +187,14 @@ export default function Aura() {
 
       const good = bullets(text, ["Landing Well", "Working Well", "Strengths"]);
       const attn = bullets(text, ["Needs", "Attention", "Improve", "Issues"]);
+      const compare = isUpdate ? parseCompare(text) : [];
       const res2 = parseResources(data.resources);
 
       if (!good.length && !attn.length) {
         throw new Error("Couldn't parse the AI response. Please try again.");
       }
 
-      setFb({ good, attn, res: res2 });
+      setFb({ good, attn, compare, res: res2 });
       setView("results");
 
     } catch (e) {
@@ -196,7 +204,18 @@ export default function Aura() {
     }
   };
 
-  const reset = () => {
+const reset = () => {
+    // If there was a previous result, keep its "Needs Attention" bullets around in case
+    // the user says this next upload is a revision. Nothing is saved anywhere — this is
+    // just in-memory for the current browser session and clears on refresh.
+    if (fb?.attn?.length) {
+      setPrevAttn(fb.attn);
+      setAskUpdate(true);
+    } else {
+      setPrevAttn(null);
+      setAskUpdate(false);
+    }
+    setIsUpdate(false);
     setView("landing");
     setImgUrl(null);
     setImgData(null);
@@ -204,6 +223,12 @@ export default function Aura() {
     setAns({stage:null,type:null,focus:null});
     setFb(null);
     setErr(null);
+  };
+
+  const startFresh = () => {
+    setPrevAttn(null);
+    setAskUpdate(false);
+    setIsUpdate(false);
   };
 
   return (
@@ -304,6 +329,15 @@ export default function Aura() {
                 </button>
               </div>
             )}
+{askUpdate && !isUpdate && (
+              <div className="update-ask">
+                <p>Is this an updated version of the design you just got feedback on?</p>
+                <div className="update-ask-btns">
+                  <button className="ua-yes" onClick={()=>setIsUpdate(true)}>Yes, compare it</button>
+                  <button className="ua-no" onClick={startFresh}>No, it's new</button>
+                </div>
+              </div>
+            )}
             {err && <p className="err">{err}</p>}
           </div>
         )}
@@ -329,19 +363,36 @@ export default function Aura() {
           </div>
         )}
 
-        {view === "analyzing" && (
+{view === "analyzing" && (
           <div className="apage">
             <div className="spin">
               <span/><span/><span/>
             </div>
             <p className="a-msg" key={mi}>{MSGS[mi]}</p>
+            {isUpdate && <p className="a-compare-tag">Comparing to your last upload</p>}
           </div>
         )}
 
-        {view === "results" && fb && (
+{view === "results" && fb && (
           <div className="rpage">
             <p className="r-eye">Feedback ready</p>
             <h2 className="r-h">Here's what <em>Aura</em> sees.</h2>
+
+            {isUpdate && fb.compare && fb.compare.length > 0 && (
+              <div className="fcard fcard-compare" style={{animationDelay:"0.05s"}}>
+                <div className="c-hd"><div className="c-bar bc"/><h3 className="c-ttl">✦ Since Your Last Upload</h3></div>
+                <ul className="blist">
+                  {fb.compare.map((b,i)=>{
+                    const isFixed = /^fixed:/i.test(b);
+                    const isNew = /^new:/i.test(b);
+                    const dotClass = isFixed ? "dg" : isNew ? "da" : "db";
+                    return (
+                      <li className="bitem" key={i}><span className={`bdot ${dotClass}`}/><span>{b}</span></li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
 
             <div className="fcard" style={{animationDelay:"0.1s"}}>
               <div className="c-hd"><div className="c-bar bg"/><h3 className="c-ttl">✦ What's Landing Well</h3></div>
