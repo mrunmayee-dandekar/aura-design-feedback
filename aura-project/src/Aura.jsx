@@ -24,6 +24,10 @@ function parseCompare(text) {
   return bullets(text, ["Since Your Last Upload", "Last Upload"]);
 }
 
+function parseCompare(text) {
+  return bullets(text, ["Since Your Last Upload", "Last Upload"]);
+}
+
 function parseResources(resources) {
   if (!resources || !Array.isArray(resources)) return [];
   return resources.map(r => ({
@@ -59,6 +63,9 @@ export default function Aura() {
   const [siteUrl, setSiteUrl]   = useState("");
   const [ans, setAns]           = useState({stage:null,type:null,focus:null});
   const [fb, setFb]             = useState(null);
+  const [prevAttn, setPrevAttn] = useState(null);   // previous "Needs Attention" bullets, kept in-session only
+  const [isUpdate, setIsUpdate] = useState(false);   // whether user said "yes this is a re-upload"
+  const [askUpdate, setAskUpdate] = useState(false);  // whether to show the re-upload prompt
   const [prevAttn, setPrevAttn] = useState(null);   // previous "Needs Attention" bullets, kept in-session only
   const [isUpdate, setIsUpdate] = useState(false);   // whether user said "yes this is a re-upload"
   const [askUpdate, setAskUpdate] = useState(false);  // whether to show the re-upload prompt
